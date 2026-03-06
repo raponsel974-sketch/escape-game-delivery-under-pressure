@@ -1,0 +1,1738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delivery Under Pressure — Escape Game ATOS</title>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080808;
+  --panel: #111111;
+  --white: #F0EFE8;
+  --red: #C0392B;
+  --yellow: #E8C84A;
+  --green: #27AE60;
+  --blue: #2980B9;
+  --purple: #8E44AD;
+  --border: 3px solid var(--white);
+  --shadow: 5px 5px 0 rgba(255,255,255,0.15);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Nunito', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ── NOISE OVERLAY ─────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.4;
+}
+
+/* ── SPEED LINES SVG BG ─────────────────────────────────────────── */
+.speed-bg {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.speed-bg svg { width: 100%; height: 100%; }
+
+/* ── TOP HUD ─────────────────────────────────────────────────────── */
+#hud {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  padding: 10px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(8,8,8,0.98) 70%, transparent);
+}
+#hud.hidden { display: none !important; }
+#progress-label {
+  font-family: 'Bangers', cursive;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  color: rgba(240,239,232,0.5);
+  text-transform: uppercase;
+}
+#timer-display {
+  font-family: 'Bangers', cursive;
+  font-size: 2.4rem;
+  letter-spacing: 4px;
+  color: var(--yellow);
+  text-shadow: 0 0 20px rgba(232,200,74,0.5);
+  min-width: 110px;
+  text-align: center;
+}
+#timer-display.urgent { color: var(--red); animation: pulse-red 0.8s infinite; }
+@keyframes pulse-red { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
+#hint-btn {
+  font-family: 'Bangers', cursive;
+  font-size: 0.9rem;
+  letter-spacing: 1.5px;
+  padding: 6px 16px;
+  border: 2px solid rgba(240,239,232,0.3);
+  background: transparent;
+  color: rgba(240,239,232,0.5);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+#hint-btn:hover:not(:disabled) { border-color: var(--yellow); color: var(--yellow); }
+#hint-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+#hint-btn.used { border-color: var(--red); color: var(--red); }
+
+/* ── PROGRESS DOTS ──────────────────────────────────────────────── */
+#progress-dots { display: flex; gap: 6px; align-items: center; }
+.pdot {
+  width: 10px; height: 10px;
+  border: 2px solid rgba(240,239,232,0.3);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+.pdot.done { background: var(--green); border-color: var(--green); }
+.pdot.active { background: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+
+/* ── TYPOGRAPHY ─────────────────────────────────────────────────── */
+.manga-title {
+  font-family: 'Bangers', cursive;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  line-height: 0.95;
+}
+
+/* ── BUTTONS ────────────────────────────────────────────────────── */
+.btn {
+  font-family: 'Bangers', cursive;
+  font-size: 1.3rem;
+  letter-spacing: 2px;
+  padding: 14px 36px;
+  border: 3px solid var(--white);
+  background: var(--bg);
+  color: var(--white);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.12s;
+  position: relative;
+  display: inline-block;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  bottom: -6px; right: -6px;
+  width: 100%; height: 100%;
+  border: 2px solid rgba(240,239,232,0.2);
+  pointer-events: none;
+}
+.btn:hover { background: var(--white); color: var(--bg); transform: translate(-2px,-2px); }
+.btn:hover::after { bottom: -8px; right: -8px; }
+.btn:active { transform: translate(1px,1px); }
+.btn.y { border-color: var(--yellow); color: var(--yellow); }
+.btn.y:hover { background: var(--yellow); color: var(--bg); }
+.btn.r { border-color: var(--red); color: var(--red); }
+.btn.r:hover { background: var(--red); color: var(--white); }
+.btn.g { border-color: var(--green); color: var(--green); }
+.btn.g:hover { background: var(--green); color: var(--white); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+/* ── PANEL ──────────────────────────────────────────────────────── */
+.panel {
+  border: 3px solid var(--white);
+  background: var(--panel);
+  position: relative;
+}
+.panel-title {
+  font-family: 'Bangers', cursive;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border-bottom: 3px solid var(--white);
+  font-size: 0.95rem;
+}
+
+/* ── TAG ────────────────────────────────────────────────────────── */
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  font-family: 'Bangers', cursive;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  border: 2px solid;
+}
+.tag.r { border-color: var(--red); color: var(--red); background: rgba(192,57,43,0.12); }
+.tag.y { border-color: var(--yellow); color: var(--yellow); background: rgba(232,200,74,0.12); }
+.tag.g { border-color: var(--green); color: var(--green); background: rgba(39,174,96,0.12); }
+.tag.w { border-color: var(--white); color: var(--white); }
+
+/* ── ALERT / FEEDBACK ───────────────────────────────────────────── */
+#feedback-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  align-items: center; justify-content: center;
+  pointer-events: none;
+}
+#feedback-overlay.active { display: flex; }
+#feedback-box {
+  font-family: 'Bangers', cursive;
+  font-size: 4rem;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  padding: 20px 48px;
+  border: 5px solid;
+  pointer-events: none;
+  animation: stamp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+#feedback-box.ok { color: var(--green); border-color: var(--green); background: rgba(39,174,96,0.1); transform: rotate(-3deg); }
+#feedback-box.ko { color: var(--red); border-color: var(--red); background: rgba(192,57,43,0.1); transform: rotate(2deg); }
+@keyframes stamp {
+  0% { opacity:0; transform: scale(2) rotate(inherit); }
+  60% { opacity:1; transform: scale(0.95) rotate(inherit); }
+  100% { opacity:1; transform: scale(1) rotate(inherit); }
+}
+
+/* ── HINT BOX ───────────────────────────────────────────────────── */
+#hint-box {
+  display: none;
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  z-index: 150;
+  background: var(--panel);
+  border: 3px solid var(--yellow);
+  padding: 16px 24px;
+  max-width: 500px;
+  width: 90%;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity:0; } to { transform: translateX(-50%) translateY(0); opacity:1; } }
+#hint-box.visible { display: block; }
+.hint-close { position: absolute; top: 8px; right: 12px; cursor: pointer; font-size: 1.2rem; opacity: 0.5; }
+
+/* ── SHAKE ANIMATION ────────────────────────────────────────────── */
+.shake {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+@keyframes shake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════ */
+/*  SCREEN : INTRO                                                   */
+/* ══════════════════════════════════════════════════════════════════ */
+#screen-intro {
+  align-items: center; justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+  position: relative;
+}
+.intro-atmos {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(192,57,43,0.08) 0%, transparent 70%),
+              radial-gradient(ellipse at 70% 30%, rgba(232,200,74,0.05) 0%, transparent 60%);
+  pointer-events: none;
+}
+.intro-eyecatch {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(3rem, 10vw, 7rem);
+  line-height: 0.9;
+  letter-spacing: 6px;
+  margin-bottom: 8px;
+  position: relative;
+}
+.intro-eyecatch span { color: var(--red); }
+.intro-sub {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+  letter-spacing: 4px;
+  color: var(--yellow);
+  margin-bottom: 32px;
+}
+.intro-scenario {
+  max-width: 580px;
+  margin: 0 auto 40px;
+  border: 3px solid rgba(240,239,232,0.2);
+  padding: 20px 28px;
+  text-align: left;
+  background: rgba(17,17,17,0.8);
+  position: relative;
+}
+.intro-scenario::before {
+  content: '🎌';
+  position: absolute; top: -16px; left: 16px;
+  font-size: 1.6rem;
+  background: var(--bg); padding: 0 8px;
+}
+.intro-scenario p { font-size: 0.95rem; line-height: 1.7; color: rgba(240,239,232,0.8); }
+.intro-scenario p + p { margin-top: 10px; }
+.intro-scenario strong { color: var(--yellow); }
+.intro-meta {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  justify-content: center; margin-bottom: 40px;
+}
+.intro-badge {
+  font-family: 'Bangers', cursive;
+  letter-spacing: 1.5px;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  border: 2px solid rgba(240,239,232,0.25);
+  color: rgba(240,239,232,0.6);
+}
+
+/* ══════════════════════════════════════════════════════════════════ */
+/*  SCREEN : CHARACTERS                                              */
+/* ══════════════════════════════════════════════════════════════════ */
+#screen-chars {
+  padding: 80px 24px 40px;
+  position: relative;
+}
+.chars-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.chars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto 40px;
+}
+.char-card {
+  border: 3px solid rgba(240,239,232,0.2);
+  background: var(--panel);
+  padding: 0;
+  overflow: hidden;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+.char-card:hover { border-color: var(--white); transform: translateY(-3px); }
+.char-card.selected { border-color: var(--yellow); box-shadow: 0 0 20px rgba(232,200,74,0.3); }
+.char-header {
+  padding: 12px 14px;
+  border-bottom: 3px solid rgba(240,239,232,0.2);
+  display: flex; align-items: center; gap: 10px;
+}
+.char-emoji { font-size: 1.8rem; }
+.char-name { font-family: 'Bangers', cursive; font-size: 1.3rem; letter-spacing: 2px; }
+.char-gen { font-size: 0.7rem; opacity: 0.5; letter-spacing: 1px; text-transform: uppercase; }
+.char-body { padding: 12px 14px; }
+.char-archetype { font-size: 0.72rem; color: var(--yellow); font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
+.char-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: flex-start; }
+.char-label { font-family: 'Bangers', cursive; font-size: 0.72rem; letter-spacing: 1px; min-width: 70px; padding-top: 1px; }
+.char-label.g { color: var(--green); }
+.char-label.r { color: var(--red); }
+.char-value { font-size: 0.78rem; opacity: 0.8; line-height: 1.4; }
+.char-quote {
+  font-size: 0.73rem; font-style: italic;
+  opacity: 0.55; margin-top: 10px;
+  border-top: 1px solid rgba(240,239,232,0.1);
+  padding-top: 8px;
+  line-height: 1.4;
+}
+
+/* ══════════════════════════════════════════════════════════════════ */
+/*  ENIGMA COMMON                                                    */
+/* ══════════════════════════════════════════════════════════════════ */
+.enigma-screen {
+  padding: 80px 24px 60px;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+.enigma-header {
+  margin-bottom: 28px;
+}
+.enigma-number {
+  font-family: 'Bangers', cursive;
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  color: var(--yellow);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.enigma-title {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.enigma-context {
+  border-left: 4px solid var(--yellow);
+  padding: 12px 16px;
+  background: rgba(232,200,74,0.05);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: rgba(240,239,232,0.85);
+}
+.enigma-context strong { color: var(--yellow); }
+.enigma-question {
+  margin-top: 24px;
+  margin-bottom: 20px;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.enigma-footer {
+  margin-top: 32px;
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+}
+
+/* ── E1 : PLANCHES ──────────────────────────────────────────────── */
+.planches-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+@media (max-width: 600px) { .planches-grid { grid-template-columns: 1fr; } }
+.planche-card {
+  border: 3px solid rgba(240,239,232,0.2);
+  background: var(--panel);
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+}
+.planche-card:hover { border-color: var(--white); }
+.planche-card.selected { border-color: var(--yellow); box-shadow: 0 0 16px rgba(232,200,74,0.3); }
+.planche-card.wrong { border-color: var(--red); animation: shake 0.4s; }
+.planche-label {
+  font-family: 'Bangers', cursive;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  padding: 8px 12px;
+  border-bottom: 2px solid rgba(240,239,232,0.15);
+  background: rgba(0,0,0,0.3);
+  display: flex; justify-content: space-between;
+}
+.planche-content { padding: 14px 14px; }
+.planche-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 0.82rem; margin-bottom: 10px; line-height: 1.5;
+}
+.planche-item .pill {
+  font-family: 'Bangers', cursive;
+  font-size: 0.65rem; letter-spacing: 1px;
+  padding: 1px 6px;
+  border: 1.5px solid rgba(240,239,232,0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.planche-item.contradict .pill { border-color: var(--red); color: var(--red); }
+.planche-item.contradict span { color: rgba(240,239,232,0.4); text-decoration: line-through; }
+.planche-item span { opacity: 0.8; }
+
+/* ── E1 : KEY INFO FORM ─────────────────────────────────────────── */
+#e1-form { display: none; margin-top: 20px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 500px) { .form-grid { grid-template-columns: 1fr; } }
+.form-group label {
+  display: block; font-family: 'Bangers', cursive;
+  letter-spacing: 1px; font-size: 0.85rem; color: var(--yellow);
+  margin-bottom: 4px;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  background: var(--panel);
+  border: 2px solid rgba(240,239,232,0.25);
+  color: var(--white);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.9rem;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--yellow); }
+.form-group input.correct { border-color: var(--green); }
+.form-group input.incorrect { border-color: var(--red); }
+
+/* ── E2 : DECODAGE ──────────────────────────────────────────────── */
+.decode-key {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px; margin: 16px 0;
+}
+.key-item {
+  display: flex; align-items: center; gap: 10px;
+  border: 2px solid rgba(240,239,232,0.15);
+  background: var(--panel); padding: 10px 12px;
+}
+.key-icon { font-size: 1.5rem; flex-shrink: 0; }
+.key-text { font-size: 0.78rem; line-height: 1.4; }
+.key-text strong { color: var(--yellow); display: block; font-size: 0.7rem; letter-spacing: 0.5px; margin-bottom: 2px; }
+
+.tasks-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.task-row {
+  display: flex; align-items: center; gap: 10px;
+  border: 2px solid rgba(240,239,232,0.15);
+  background: var(--panel); padding: 10px 14px;
+  transition: border-color 0.2s;
+}
+.task-row.correct-task { border-color: var(--green); }
+.task-icon { font-size: 1.3rem; flex-shrink: 0; min-width: 30px; }
+.task-desc { flex: 1; font-size: 0.85rem; opacity: 0.85; }
+.task-select {
+  background: rgba(0,0,0,0.5);
+  border: 2px solid rgba(240,239,232,0.25);
+  color: var(--white);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.8rem;
+  padding: 5px 10px;
+  outline: none;
+  cursor: pointer;
+  min-width: 120px;
+}
+.task-select:focus { border-color: var(--yellow); }
+
+/* ── E3 : STORY ARC ─────────────────────────────────────────────── */
+.arc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px; margin: 16px 0;
+}
+@media (max-width: 600px) { .arc-grid { grid-template-columns: repeat(2, 1fr); } }
+.arc-panel {
+  border: 3px solid rgba(240,239,232,0.2);
+  background: var(--panel);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 100px;
+  display: flex; flex-direction: column; gap: 6px;
+  position: relative;
+}
+.arc-panel:hover { border-color: var(--white); }
+.arc-panel.ordered { border-color: var(--yellow); }
+.arc-panel.correct-pos { border-color: var(--green); }
+.arc-order-badge {
+  position: absolute; top: -10px; left: -10px;
+  width: 26px; height: 26px;
+  background: var(--yellow); color: var(--bg);
+  border-radius: 50%;
+  font-family: 'Bangers', cursive;
+  font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.arc-panel-id {
+  font-family: 'Bangers', cursive;
+  font-size: 0.75rem; letter-spacing: 1px;
+  color: rgba(240,239,232,0.3);
+}
+.arc-panel-icon { font-size: 1.6rem; }
+.arc-panel-text { font-size: 0.75rem; line-height: 1.4; opacity: 0.75; }
+.arc-sequence {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-top: 8px; padding: 12px;
+  border: 2px dashed rgba(240,239,232,0.2);
+  min-height: 44px;
+  align-items: center;
+}
+.seq-badge {
+  font-family: 'Bangers', cursive;
+  font-size: 1rem; letter-spacing: 1px;
+  padding: 4px 10px;
+  background: rgba(232,200,74,0.15);
+  border: 2px solid var(--yellow);
+  color: var(--yellow);
+}
+
+/* ── E4 : REFORMULATION ─────────────────────────────────────────── */
+.position-card {
+  border: 3px solid rgba(240,239,232,0.2);
+  background: var(--panel); margin-bottom: 20px; overflow: hidden;
+}
+.position-header {
+  padding: 10px 16px;
+  border-bottom: 2px solid rgba(240,239,232,0.15);
+  font-family: 'Bangers', cursive;
+  font-size: 1.05rem; letter-spacing: 2px;
+  display: flex; align-items: center; gap: 10px;
+}
+.position-text { padding: 14px 16px; font-size: 0.88rem; line-height: 1.65; opacity: 0.85; font-style: italic; }
+.reformulation-options { padding: 12px 16px; border-top: 2px solid rgba(240,239,232,0.1); display: flex; flex-direction: column; gap: 8px; }
+.ref-option {
+  display: flex; gap: 10px; align-items: flex-start;
+  cursor: pointer; padding: 10px 12px;
+  border: 2px solid rgba(240,239,232,0.15);
+  background: rgba(0,0,0,0.3);
+  transition: all 0.15s;
+  font-size: 0.82rem; line-height: 1.5;
+}
+.ref-option:hover { border-color: var(--white); }
+.ref-option.selected { border-color: var(--yellow); background: rgba(232,200,74,0.08); }
+.ref-option.correct { border-color: var(--green); background: rgba(39,174,96,0.08); }
+.ref-option.wrong { border-color: var(--red); background: rgba(192,57,43,0.08); }
+.ref-letter {
+  font-family: 'Bangers', cursive;
+  font-size: 1rem; letter-spacing: 1px;
+  min-width: 24px; color: var(--yellow);
+}
+
+/* ── E5 : ARCHÉTYPES ────────────────────────────────────────────── */
+.arch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px; margin-bottom: 20px;
+}
+.arch-card {
+  border: 3px solid rgba(240,239,232,0.2);
+  background: var(--panel);
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.arch-card:hover { border-color: var(--white); transform: translateY(-2px); }
+.arch-card.selected { border-color: var(--yellow); box-shadow: 0 0 16px rgba(232,200,74,0.25); }
+.arch-card.selected::after {
+  content: '✓';
+  position: absolute; top: 8px; right: 8px;
+  font-family: 'Bangers', cursive;
+  color: var(--yellow); font-size: 1rem;
+}
+.arch-card { position: relative; }
+.arch-emoji { font-size: 2rem; margin-bottom: 6px; }
+.arch-name { font-family: 'Bangers', cursive; letter-spacing: 1.5px; font-size: 1.05rem; margin-bottom: 4px; }
+.arch-archetype { font-size: 0.68rem; color: var(--yellow); margin-bottom: 6px; opacity: 0.8; }
+.arch-logique { font-size: 0.73rem; opacity: 0.65; line-height: 1.4; }
+.arch-counter {
+  font-family: 'Bangers', cursive; letter-spacing: 2px;
+  color: var(--yellow); font-size: 1rem; margin-bottom: 16px;
+}
+.vote-area { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+.vote-result {
+  font-family: 'Bangers', cursive; letter-spacing: 2px;
+  font-size: 1.3rem; display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════ */
+/*  SCREEN : DEBRIEF                                                 */
+/* ══════════════════════════════════════════════════════════════════ */
+#screen-debrief {
+  padding: 80px 24px 60px;
+  max-width: 720px; margin: 0 auto; width: 100%;
+}
+.debrief-score {
+  border: 3px solid var(--yellow);
+  padding: 24px 28px; margin-bottom: 32px;
+  display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
+  background: rgba(232,200,74,0.05);
+}
+.score-time {
+  font-family: 'Bangers', cursive;
+  font-size: 3rem; letter-spacing: 4px; color: var(--yellow); line-height: 1;
+}
+.score-label { font-size: 0.8rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 2px; }
+.debrief-q-title {
+  font-family: 'Bangers', cursive; letter-spacing: 2px;
+  font-size: 1.1rem; margin-bottom: 20px;
+  text-transform: uppercase; color: var(--yellow);
+}
+.debrief-q {
+  border-left: 4px solid rgba(240,239,232,0.2);
+  padding: 12px 16px; margin-bottom: 12px;
+  background: rgba(17,17,17,0.5);
+}
+.debrief-q p { font-size: 0.9rem; line-height: 1.6; opacity: 0.85; }
+
+/* ══════════════════════════════════════════════════════════════════ */
+/*  SCREEN : VICTORY                                                 */
+/* ══════════════════════════════════════════════════════════════════ */
+#screen-victory {
+  align-items: center; justify-content: center;
+  text-align: center; padding: 60px 24px;
+  position: relative;
+}
+.victory-atmos {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(39,174,96,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.victory-title {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(3rem, 10vw, 6rem);
+  letter-spacing: 6px;
+  line-height: 1;
+  margin-bottom: 8px;
+  color: var(--green);
+  text-shadow: 0 0 40px rgba(39,174,96,0.4);
+  animation: victoryGlow 2s ease-in-out infinite;
+}
+@keyframes victoryGlow {
+  0%,100% { text-shadow: 0 0 40px rgba(39,174,96,0.4); }
+  50% { text-shadow: 0 0 80px rgba(39,174,96,0.8), 0 0 120px rgba(39,174,96,0.3); }
+}
+.victory-sub { font-family: 'Bangers', cursive; letter-spacing: 3px; color: var(--yellow); font-size: 1.4rem; margin-bottom: 40px; }
+.victory-stats {
+  display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px;
+}
+.victory-stat {
+  border: 3px solid rgba(240,239,232,0.2);
+  padding: 16px 28px; text-align: center;
+}
+.victory-stat .val {
+  font-family: 'Bangers', cursive;
+  font-size: 2.5rem; letter-spacing: 3px; color: var(--yellow);
+}
+.victory-stat .lbl { font-size: 0.75rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Speed lines background -->
+<div class="speed-bg">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <radialGradient id="sg" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+        <stop offset="60%" stop-color="#ffffff" stop-opacity="0.03"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="800" height="600" fill="url(#sg)"/>
+    <g stroke="white" stroke-width="0.3" opacity="0.15">
+      <script>
+      </script>
+    </g>
+  </svg>
+</div>
+
+<!-- Global HUD -->
+<div id="hud" class="hidden">
+  <div id="progress-dots"></div>
+  <div id="timer-display">60:00</div>
+  <button id="hint-btn" onclick="showHint()" disabled>Indice</button>
+</div>
+
+<!-- Feedback overlay -->
+<div id="feedback-overlay">
+  <div id="feedback-box"></div>
+</div>
+
+<!-- Hint box -->
+<div id="hint-box">
+  <span class="hint-close" onclick="closeHint()">✕</span>
+  <div style="font-family:'Bangers',cursive;font-size:0.85rem;letter-spacing:2px;color:var(--yellow);margin-bottom:8px;">INDICE</div>
+  <div id="hint-text" style="font-size:0.88rem;line-height:1.6;opacity:0.85;"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN INTRO                                                   -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-intro" class="screen active">
+  <div class="intro-atmos"></div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 24px;text-align:center;">
+    <div style="font-family:'Bangers',cursive;font-size:0.85rem;letter-spacing:4px;color:var(--yellow);margin-bottom:16px;">ATOS FRANCE × ISG RH PARIS</div>
+    <div class="intro-eyecatch">DELIVERY<br><span>UNDER</span><br>PRESSURE</div>
+    <div class="intro-sub">Escape Game Intergénérationnel</div>
+    
+    <div class="intro-scenario">
+      <p>ATOS France vient de décrocher un <strong>méga-contrat de transformation digitale</strong>. Délai : 72 heures. Le chef de projet a disparu. Les données sont partiellement corrompues.</p>
+      <p>Votre équipe doit reconstituer le plan de livraison, gérer les escalades clients et prendre la <strong>décision finale — sans filet de sécurité.</strong></p>
+    </div>
+    
+    <div class="intro-meta">
+      <div class="intro-badge">⏱ 60 minutes</div>
+      <div class="intro-badge">👥 4 – 6 joueurs</div>
+      <div class="intro-badge">🎌 5 énigmes</div>
+      <div class="intro-badge">🏢 Présentiel & distanciel</div>
+    </div>
+    
+    <button class="btn y" onclick="startGame()" style="font-size:1.6rem;padding:18px 56px;">
+      DÉMARRER LA MISSION
+    </button>
+    
+    <div style="margin-top:24px;font-size:0.75rem;opacity:0.3;letter-spacing:2px;text-transform:uppercase;">
+      Inspiré de Monster · Naruto · One Piece · Death Note · L'Attaque des Titans
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN CHARACTERS                                              -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-chars" class="screen">
+  <div class="chars-header">
+    <div style="font-family:'Bangers',cursive;font-size:0.85rem;letter-spacing:3px;color:var(--yellow);">ÉTAPE 1/6 — DISTRIBUTION DES RÔLES</div>
+    <h2 class="manga-title" style="font-size:2.2rem;margin-top:6px;">CHOISISSEZ VOS PERSONNAGES</h2>
+    <p style="font-size:0.85rem;opacity:0.5;margin-top:8px;">Distribution aléatoire obligatoire — ne choisissez pas votre personnage préféré</p>
+  </div>
+  
+  <div class="chars-grid" id="chars-grid"></div>
+  
+  <div style="text-align:center;margin-bottom:16px;">
+    <button class="btn" onclick="shuffleChars()" style="margin-right:12px;">🎲 Tirage aléatoire</button>
+    <button class="btn y" id="chars-next-btn" onclick="goToEnigma(1)" disabled>
+      COMMENCER LE TIMER →
+    </button>
+  </div>
+  <p id="chars-status" style="text-align:center;font-size:0.8rem;opacity:0.4;margin-bottom:40px;">Cliquez sur un personnage pour le sélectionner, ou utilisez le tirage aléatoire</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ENIGME 1 : LES TROIS PLANCHES                                 -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-e1" class="screen">
+<div class="enigma-screen">
+  <div class="enigma-header">
+    <div class="enigma-number">Énigme 1/5 · Réf. Monster — Naoki Urasawa · 10 min</div>
+    <div class="enigma-title">Les Trois Planches</div>
+    <div class="enigma-context">
+      Le chef de projet a laissé trois versions d'un même mémo avant de disparaître. <strong>Une seule est authentique.</strong> Les deux autres contiennent des incohérences — visuelles et narratives. Identifiez la planche authentique, puis extrayez les 4 informations clés du contrat.
+    </div>
+  </div>
+  
+  <div class="enigma-question">Quelle planche est authentique ?</div>
+  
+  <div class="planches-grid">
+    <!-- Planche A -->
+    <div class="planche-card" id="planche-A" onclick="selectPlanche('A')">
+      <div class="planche-label">PLANCHE A <span style="font-size:0.7rem;opacity:0.5;">case 1–4</span></div>
+      <div class="planche-content">
+        <div class="planche-item contradict">
+          <span class="pill">Case 2</span>
+          <span>Personnage tient un café — mais case 4 indique allergie à la caféine</span>
+        </div>
+        <div class="planche-item">
+          <span class="pill">Périmètre</span>
+          <span>Migration cloud infrastructure groupe</span>
+        </div>
+        <div class="planche-item">
+          <span class="pill">Budget</span>
+          <span>480 000 $</span>
+        </div>
+        <div class="planche-item">
+          <span class="pill">Deadline</span>
+          <span>J+72h</span>
+        </div>
+      </div>
+    </div>
+    <!-- Planche B (AUTHENTIC) -->
+    <div class="planche-card" id="planche-B" onclick="selectPlanche('B')">
+      <div class="planche-label">PLANCHE B <span style="font-size:0.7rem;opacity:0.5;">case 1–4</span></div>
+      <div class="planche-content">
+        <div class="planche-item">
+          <span class="pill">Périmètre</span>
+          <span>Migration cloud infrastructure groupe</span>
+        </div>
+        <div class="planche-item">
+          <span class="pill">Deadline</span>
+          <span>J+72 heures</span>
+        </div>
+        <div class="planche-item">
+          <span class="pill">Budget</span>
+          <span>480 000 €</span>
+        </div>
+        <div class="planche-item">
+          <span class="pill">Contact</span>
+          <span>DSI Groupe</span>
+        </div>
+      </div>
+    </div>
+    <!-- Planche C -->
+    <div class="planche-card" id="planche-C" onclick="selectPlanche('C')">
+      <div class="planche-label">PLANCHE C <span style="font-size:0.7rem;opacity:0.5;">case 1–4</span></div>
+      <div class="planche-content">
+        <div class="planche-item contradict">
+          <span class="pill">Case 1</span>
+          <span>Horloge affiche 9h00 — mais texte dit "réunion de fin de journée"</span>
+        </div>
+        <div class="planche-item contradict">
+          <span class="pill">Case 3</span>
+          <span>Personnage seul — mais texte dit "en présence du client"</span>
+        </div>
+        <div class="planche-item">
+          <span class="pill">Budget</span>
+          <span>480 000 €</span>
+        </div>
+        <div class="planche-item">
+          <span class="pill">Deadline</span>
+          <span>J+72h</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Step 2: Extract infos -->
+  <div id="e1-form">
+    <div style="margin:24px 0 12px;font-family:'Bangers',cursive;letter-spacing:2px;color:var(--green);font-size:1rem;">✓ PLANCHE B AUTHENTIQUE — Extrayez les 4 informations clés :</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Périmètre du contrat</label>
+        <input type="text" id="e1-perimetre" placeholder="ex: Migration cloud..." oninput="checkE1Fields()">
+      </div>
+      <div class="form-group">
+        <label>Deadline</label>
+        <input type="text" id="e1-deadline" placeholder="ex: J+..." oninput="checkE1Fields()">
+      </div>
+      <div class="form-group">
+        <label>Budget</label>
+        <input type="text" id="e1-budget" placeholder="ex: 480 000 €" oninput="checkE1Fields()">
+      </div>
+      <div class="form-group">
+        <label>Interlocuteur client</label>
+        <input type="text" id="e1-contact" placeholder="ex: DSI..." oninput="checkE1Fields()">
+      </div>
+    </div>
+  </div>
+  
+  <div class="enigma-footer">
+    <button class="btn g" id="e1-validate-btn" onclick="validateE1()" disabled>Valider les infos →</button>
+    <div id="e1-error" style="color:var(--red);font-size:0.85rem;display:none;font-weight:700;"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ENIGME 2 : LE TRADUCTEUR                                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-e2" class="screen">
+<div class="enigma-screen">
+  <div class="enigma-header">
+    <div class="enigma-number">Énigme 2/5 · Réf. Akira / Dragon Ball · 10 min</div>
+    <div class="enigma-title">Le Traducteur</div>
+    <div class="enigma-context">
+      La documentation technique est <strong>encodée dans une planche symbolique manga</strong>. Seul <strong>KENZO</strong> reçoit la clé de décodage — il doit la transmettre <em>oralement</em> à l'équipe sans montrer sa carte. Ci-dessous : la clé que Kenzo lit à voix haute.
+    </div>
+  </div>
+  
+  <div class="panel" style="margin-bottom:20px;">
+    <div class="panel-title" style="color:var(--yellow);">🔑 Clé de décodage — Kenzo lit à voix haute</div>
+    <div class="decode-key" style="padding:14px;">
+      <div class="key-item"><span class="key-icon">⚔️</span><div class="key-text"><strong>Posture de combat (Vegeta)</strong>Tâche bloquante — priorité absolue</div></div>
+      <div class="key-item"><span class="key-icon">🏃</span><div class="key-text"><strong>Personnages qui fuient</strong>Risque identifié — escalade requise</div></div>
+      <div class="key-item"><span class="key-icon">📖</span><div class="key-text"><strong>Sensei qui explique</strong>Livrable formation / documentation</div></div>
+      <div class="key-item"><span class="key-icon">🔒</span><div class="key-text"><strong>Porte verrouillée</strong>Dépendance non résolue — bloqué</div></div>
+      <div class="key-item"><span class="key-icon">🥂</span><div class="key-text"><strong>Personnages qui trinquent</strong>Livrable validé — go-live</div></div>
+    </div>
+  </div>
+  
+  <div class="enigma-question">Classifiez les 7 livrables (bloquant / important / nice-to-have) :</div>
+  
+  <div class="tasks-list" id="e2-tasks">
+    <div class="task-row" data-correct="bloquant"><span class="task-icon">⚔️</span><span class="task-desc">Audit de sécurité infrastructure</span><select class="task-select" onchange="checkE2()"><option value="">-- Priorité --</option><option>bloquant</option><option>important</option><option>nice-to-have</option></select></div>
+    <div class="task-row" data-correct="bloquant"><span class="task-icon">⚔️</span><span class="task-desc">Migration base de données principale</span><select class="task-select" onchange="checkE2()"><option value="">-- Priorité --</option><option>bloquant</option><option>important</option><option>nice-to-have</option></select></div>
+    <div class="task-row" data-correct="important"><span class="task-icon">📖</span><span class="task-desc">Plan de déploiement (phase 1)</span><select class="task-select" onchange="checkE2()"><option value="">-- Priorité --</option><option>bloquant</option><option>important</option><option>nice-to-have</option></select></div>
+    <div class="task-row" data-correct="important"><span class="task-icon">📖</span><span class="task-desc">Plan de déploiement (phase 2)</span><select class="task-select" onchange="checkE2()"><option value="">-- Priorité --</option><option>bloquant</option><option>important</option><option>nice-to-have</option></select></div>
+    <div class="task-row" data-correct="important"><span class="task-icon">📖</span><span class="task-desc">Formation des utilisateurs finaux</span><select class="task-select" onchange="checkE2()"><option value="">-- Priorité --</option><option>bloquant</option><option>important</option><option>nice-to-have</option></select></div>
+    <div class="task-row" data-correct="nice-to-have"><span class="task-icon">📖</span><span class="task-desc">Rapport de conformité RGPD</span><select class="task-select" onchange="checkE2()"><option value="">-- Priorité --</option><option>bloquant</option><option>important</option><option>nice-to-have</option></select></div>
+    <div class="task-row" data-correct="bloquant"><span class="task-icon">🥂</span><span class="task-desc">Go-live test & recette finale</span><select class="task-select" onchange="checkE2()"><option value="">-- Priorité --</option><option>bloquant</option><option>important</option><option>nice-to-have</option></select></div>
+  </div>
+  
+  <div class="enigma-footer">
+    <button class="btn g" id="e2-btn" onclick="validateE2()" disabled>Valider le décodage →</button>
+    <div id="e2-error" style="color:var(--red);font-size:0.85rem;display:none;font-weight:700;"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ENIGME 3 : LE STORY ARC                                       -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-e3" class="screen">
+<div class="enigma-screen">
+  <div class="enigma-header">
+    <div class="enigma-number">Énigme 3/5 · Réf. L'Attaque des Titans · 13 min</div>
+    <div class="enigma-title">Le Story Arc</div>
+    <div class="enigma-context">
+      Le plan de livraison a été <strong>fragmenté en 8 cases manga</strong>. Dans un manga, l'ordre des cases n'est jamais anodin — comprendre la narration visuelle, c'est comprendre la logique de séquencement du projet.
+    </div>
+  </div>
+  
+  <div class="enigma-question">Cliquez sur les cases dans le bon ordre (1 → 8) pour reconstituer le plan :</div>
+  <p style="font-size:0.8rem;opacity:0.5;margin-bottom:16px;">Cliquez une case pour lui attribuer la prochaine position. Cliquez une case déjà ordonnée pour la retirer.</p>
+  
+  <div class="arc-grid" id="arc-grid"></div>
+  
+  <div style="margin-bottom:6px;font-family:'Bangers',cursive;font-size:0.8rem;letter-spacing:2px;opacity:0.5;">VOTRE SÉQUENCE :</div>
+  <div class="arc-sequence" id="arc-sequence"><span style="opacity:0.3;font-size:0.8rem;">Cliquez les cases ci-dessus pour former la séquence...</span></div>
+  
+  <div class="enigma-footer">
+    <button class="btn" onclick="resetArc()" style="font-size:1rem;padding:10px 20px;">Réinitialiser</button>
+    <button class="btn g" id="e3-btn" onclick="validateE3()" disabled>Valider la séquence →</button>
+    <div id="e3-error" style="color:var(--red);font-size:0.85rem;display:none;font-weight:700;"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ENIGME 4 : NARUTO VS ERWIN                                    -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-e4" class="screen">
+<div class="enigma-screen">
+  <div class="enigma-header">
+    <div class="enigma-number">Énigme 4/5 · Réf. Naruto / L'Attaque des Titans · 10 min</div>
+    <div class="enigma-title">Naruto vs Erwin</div>
+    <div class="enigma-context">
+      Un désaccord éclate sur la stratégie de livraison. Le client appelle dans 10 minutes. Pour dépersonnaliser le conflit, les positions sont incarnées par des <strong>archétypes manga</strong>. Chaque joueur doit reformuler la position adverse — <em>sans caricaturer, sans être d'accord.</em>
+    </div>
+  </div>
+  
+  <!-- Position NARUTO -->
+  <div class="position-card">
+    <div class="position-header" style="color:var(--yellow);">
+      🟡 NARUTO (incarné par Yuki) <span class="tag y" style="margin-left:auto;">Position A</span>
+    </div>
+    <div class="position-text">
+      "On livre 80% du périmètre vendredi, on itère ensuite. Le client a besoin de voir quelque chose tourner. La perfection est l'ennemie du bien."
+    </div>
+    <div class="reformulation-options">
+      <div style="font-family:'Bangers',cursive;font-size:0.8rem;letter-spacing:1.5px;opacity:0.5;margin-bottom:4px;">QUELLE REFORMULATION EST CORRECTE ?</div>
+      <div class="ref-option" onclick="selectRef('n',0,this)">
+        <span class="ref-letter">A</span>
+        <span>Ce que j'entends dans la logique de Naruto, c'est qu'il préfère la rapidité à la qualité et qu'il ne se soucie pas du client.</span>
+      </div>
+      <div class="ref-option" onclick="selectRef('n',1,this)">
+        <span class="ref-letter">B</span>
+        <span>Ce que j'entends dans la logique de Naruto, c'est que montrer de la progression concrète au client crée de la confiance, et qu'une livraison partielle tenue vaut plus qu'une promesse de perfection.</span>
+      </div>
+      <div class="ref-option" onclick="selectRef('n',2,this)">
+        <span class="ref-letter">C</span>
+        <span>Ce que j'entends dans la logique de Naruto, c'est qu'il faut toujours livrer vite même si c'est bâclé, quelles qu'en soient les conséquences techniques.</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Position ERWIN -->
+  <div class="position-card" id="erwin-card" style="opacity:0.4;pointer-events:none;">
+    <div class="position-header" style="color:var(--white);">
+      ⚔️ ERWIN (incarné par Kenzo) <span class="tag w" style="margin-left:auto;">Position B</span>
+    </div>
+    <div class="position-text">
+      "Si on livre incomplet, on crée de la dette technique qu'on ne remboursera jamais. Je préfère négocier 5 jours plutôt que de livrer quelque chose de bancal."
+    </div>
+    <div class="reformulation-options">
+      <div style="font-family:'Bangers',cursive;font-size:0.8rem;letter-spacing:1.5px;opacity:0.5;margin-bottom:4px;">QUELLE REFORMULATION EST CORRECTE ?</div>
+      <div class="ref-option" onclick="selectRef('e',0,this)">
+        <span class="ref-letter">A</span>
+        <span>Ce que j'entends dans la logique d'Erwin, c'est qu'il refuse de travailler sous pression et veut toujours repousser les délais.</span>
+      </div>
+      <div class="ref-option" onclick="selectRef('e',1,this)">
+        <span class="ref-letter">B</span>
+        <span>Ce que j'entends dans la logique d'Erwin, c'est qu'une livraison incomplète génère des coûts cachés futurs plus importants que le retard de 5 jours, et qu'il protège ainsi l'équipe sur le long terme.</span>
+      </div>
+      <div class="ref-option" onclick="selectRef('e',2,this)">
+        <span class="ref-letter">C</span>
+        <span>Ce que j'entends dans la logique d'Erwin, c'est qu'il n'a pas confiance en l'équipe et qu'il pense que personne ne sait ce qu'il fait.</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="enigma-footer">
+    <button class="btn g" id="e4-btn" onclick="validateE4()" disabled>Stratégie votée — Valider →</button>
+    <div id="e4-error" style="color:var(--red);font-size:0.85rem;display:none;font-weight:700;"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ENIGME 5 : LES CINQ ARCHÉTYPES                                -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-e5" class="screen">
+<div class="enigma-screen">
+  <div class="enigma-header">
+    <div class="enigma-number">Énigme 5/5 · One Piece · Death Note · Naruto · Fruits Basket · L'Attaque des Titans · 7 min</div>
+    <div class="enigma-title">Les Cinq Archétypes</div>
+    <div class="enigma-context">
+      Le client propose un <strong>avenant : périmètre réduit de 20%, délai maintenu, bonus si livraison avant J+60.</strong> L'équipe a 5 minutes pour décider collectivement. L'argument commun doit intégrer explicitement au moins <strong>3 logiques d'archétypes</strong>.
+    </div>
+  </div>
+  
+  <div class="arch-counter" id="arch-counter">Sélectionnez 3 archétypes minimum pour construire l'argument commun</div>
+  
+  <div class="arch-grid" id="arch-grid"></div>
+  
+  <div id="arch-argument" style="display:none;margin-bottom:20px;">
+    <div style="font-family:'Bangers',cursive;letter-spacing:2px;color:var(--yellow);font-size:0.9rem;margin-bottom:8px;">ARGUMENT COMMUN GÉNÉRÉ :</div>
+    <div id="arch-arg-text" class="panel" style="padding:16px;font-size:0.9rem;line-height:1.7;font-style:italic;border-color:var(--yellow);"></div>
+  </div>
+  
+  <div class="vote-area">
+    <div style="font-family:'Bangers',cursive;letter-spacing:2px;font-size:1rem;opacity:0.7;">L'ÉQUIPE VOTE :</div>
+    <button class="btn g" id="vote-accept" onclick="vote('accept')" disabled>✓ ACCEPTER L'AVENANT</button>
+    <button class="btn r" id="vote-refuse" onclick="vote('refuse')" disabled>✗ REFUSER L'AVENANT</button>
+    <div class="vote-result" id="vote-result"></div>
+  </div>
+  
+  <div class="enigma-footer" id="e5-footer" style="display:none;">
+    <button class="btn y" onclick="goToDebrief()">Mission accomplie — Débrief →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN DEBRIEF                                                 -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-debrief" class="screen">
+<div id="screen-debrief-inner">
+  <div style="margin-bottom:20px;">
+    <div style="font-family:'Bangers',cursive;font-size:0.85rem;letter-spacing:3px;color:var(--yellow);">MISSION TERMINÉE</div>
+    <h2 class="manga-title" style="font-size:2.5rem;margin-top:4px;">DÉBRIEF D'ÉQUIPE</h2>
+  </div>
+  
+  <div class="debrief-score">
+    <div>
+      <div class="score-time" id="final-time">--:--</div>
+      <div class="score-label">Temps total</div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:0.9rem;opacity:0.8;line-height:1.6;">Toutes les énigmes résolues. Le plan de livraison est reconstruit. <strong>ATOS livre dans les temps.</strong></div>
+    </div>
+  </div>
+  
+  <div class="debrief-q-title">5 Questions pour aller plus loin</div>
+  
+  <div class="debrief-q"><p>🔥 <strong>Quel moment le manga a-t-il changé quelque chose dans votre façon de travailler ensemble ?</strong></p></div>
+  <div class="debrief-q"><p>🔄 <strong>Y a-t-il eu une inversion inattendue — quelqu'un qui savait ce que les autres ne savaient pas ?</strong></p></div>
+  <div class="debrief-q"><p>🎭 <strong>L'archétype que vous avez incarné vous ressemble-t-il ? Pourquoi ?</strong></p></div>
+  <div class="debrief-q"><p>🗣️ <strong>Qu'est-ce que reformuler Naruto/Erwin vous a appris sur votre propre position ?</strong></p></div>
+  <div class="debrief-q"><p>💼 <strong>Quelle pratique concrète pourriez-vous ramener dans votre quotidien chez ATOS ?</strong></p></div>
+  
+  <div style="margin-top:32px;padding:20px;border:2px solid rgba(240,239,232,0.1);background:rgba(17,17,17,0.5);">
+    <div style="font-family:'Bangers',cursive;letter-spacing:2px;font-size:0.85rem;color:var(--yellow);margin-bottom:10px;">PROLONGEMENTS RECOMMANDÉS</div>
+    <ul style="font-size:0.82rem;opacity:0.7;line-height:1.8;list-style:none;padding:0;">
+      <li>📅 Rituel mensuel : reprendre la question 5 en réunion d'équipe</li>
+      <li>🤝 Tandem senior/junior : binômes issus du jeu pour mentorat croisé 3 mois</li>
+      <li>📊 Mesure d'impact à M+3 : enquête courte sur la qualité perçue de la coopération</li>
+    </ul>
+  </div>
+  
+  <div style="margin-top:32px;text-align:center;">
+    <button class="btn y" onclick="goToVictory()">Voir le résultat final →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN VICTORY                                                 -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-victory" class="screen">
+  <div class="victory-atmos"></div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;">
+    <div class="victory-title">MISSION<br>ACCOMPLIE</div>
+    <div class="victory-sub">ATOS a livré dans les temps</div>
+    <div class="victory-stats">
+      <div class="victory-stat"><div class="val" id="v-time">--:--</div><div class="lbl">Temps total</div></div>
+      <div class="victory-stat"><div class="val">5/5</div><div class="lbl">Énigmes résolues</div></div>
+      <div class="victory-stat"><div class="val" id="v-hints">0</div><div class="lbl">Indices utilisés</div></div>
+    </div>
+    <div style="margin-bottom:40px;font-family:'Bangers',cursive;letter-spacing:3px;font-size:0.9rem;opacity:0.4;">
+      Workshop MBA1 · ISG RH Paris · Mars 2026 · Cabinet 3
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+      <button class="btn" onclick="restartGame()">Rejouer</button>
+      <button class="btn y" onclick="goToDebrief()">Retour au débrief</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════════
+const state = {
+  timerInterval: null,
+  startTime: null,
+  elapsed: 0,
+  currentEnigma: 0,
+  hintsUsed: 0,
+  hintsPerEnigma: {},
+  // E1
+  plancheSelected: null,
+  e1Step: 1,
+  // E3
+  arcOrder: [],
+  // E4
+  refN: null, refE: null,
+  // E5
+  archSelected: [],
+  voteDecision: null,
+};
+
+const TOTAL_SECONDS = 60 * 60;
+
+// ═══════════════════════════════════════════════════════════════════
+// CHARACTERS DATA
+// ═══════════════════════════════════════════════════════════════════
+const CHARACTERS = [
+  { id:'kenzo', emoji:'🧓', name:'KENZO', gen:'Boomer · 58 ans', role:'Architecte Senior',
+    archetype:'Le Maître — Jiraiya (Naruto)', color:'#2C3E50',
+    force:'Mémoire institutionnelle, vision long terme',
+    angle:'Résistance aux outils digitaux',
+    quote:'"J\'ai vu dix fois des projets comme ça partir en fumée. Écoutez-moi."' },
+  { id:'sara', emoji:'💼', name:'SARA', gen:'Gen X · 44 ans', role:'Manager de projet',
+    archetype:'Le Capitaine — Levi (L\'Attaque des Titans)', color:'#1A5276',
+    force:'Coordination, gestion de la pression',
+    angle:'Tendance à décider seule',
+    quote:'"Je ne peux pas attendre le consensus, le client, lui, n\'attendra pas."' },
+  { id:'yuki', emoji:'⚡', name:'YUKI', gen:'Millennial · 33 ans', role:'Lead Dev / Scrum Master',
+    archetype:'Le Héros — Luffy (One Piece)', color:'#1E8449',
+    force:'Agilité, outils digitaux, facilitation',
+    angle:'Impatience face aux processus lents',
+    quote:'"On peut itérer. Pourquoi chercher la perfection dès le départ ?"' },
+  { id:'leon', emoji:'🔍', name:'LÉON', gen:'Gen Z · 26 ans', role:'Consultant Junior / Data',
+    archetype:'Le Prodige — L (Death Note)', color:'#B7950B',
+    force:'Rapidité, veille, créativité',
+    angle:'Manque de recul sur les enjeux business',
+    quote:'"J\'ai trouvé trois solutions en ligne. Laquelle on prend ?"' },
+  { id:'marie', emoji:'🌸', name:'MARIE', gen:'Millennial · 39 ans', role:'Référente Client / QA',
+    archetype:'Le Gardien — Tohru (Fruits Basket)', color:'#6C3483',
+    force:'Écoute, relationnel, qualité',
+    angle:'Difficulté à prioriser sous pression',
+    quote:'"Le client a besoin qu\'on le rassure avant tout. C\'est ça la livraison."' },
+  { id:'aiko', emoji:'🎯', name:'AIKO', gen:'Wild card · Toutes générations', role:'Observateur/trice',
+    archetype:'Le Stratège — Erwin (L\'Attaque des Titans)', color:'#784212',
+    force:'Recul, synthèse, arbitrage neutre',
+    angle:'Tendance à ne pas s\'imposer',
+    quote:'"Je vous écoute tous... mais il faut trancher."' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// HINTS DATA
+// ═══════════════════════════════════════════════════════════════════
+const HINTS = {
+  1: 'Comparez les devises : un contrat français ne se signe pas en dollars. Et vérifiez les cohérences internes case par case.',
+  2: 'La structure des icônes suit une logique simple : ⚔️ = urgence absolue, 📖 = livrable documentaire. Commencez par les ⚔️.',
+  3: 'Un personnage qui attend devant une porte fermée ne peut pas avancer. La résolution logique : d\'abord ouvrir la porte, puis avancer. Cherchez la "clé" dans les cases.',
+  4: 'Reformuler ne signifie pas être d\'accord. La bonne reformulation reconnaît la logique de l\'autre sans la caricaturer. Cherchez la réponse la plus nuancée.',
+  5: 'Il n\'y a pas de "mauvais" vote. Construisez l\'argument en cherchant ce que 3 archétypes ont EN COMMUN dans cette décision.',
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// STORY ARC DATA
+// ═══════════════════════════════════════════════════════════════════
+const ARC_PANELS = [
+  { id:'A', icon:'🔒', label:'Case A', text:'Un personnage attend devant une porte fermée à clé — il ne peut pas avancer.', step:2 },
+  { id:'B1', icon:'🤝', label:'Case B¹', text:'Deux personnages construisent ensemble — action parallèle possible.', step:3 },
+  { id:'B2', icon:'🔧', label:'Case B²', text:'Deux personnages construisent ensemble — deuxième tâche en parallèle.', step:4 },
+  { id:'C1', icon:'🗝️', label:'Case C¹', text:'Un personnage remet une clé à un autre — transfert, déblocage d\'une dépendance.', step:1 },
+  { id:'C2', icon:'🗝️', label:'Case C²', text:'Deuxième transfert de clé — nouvelle dépendance résolue.', step:5 },
+  { id:'D', icon:'🥂', label:'Case D', text:'Fête collective — go-live, fin de séquence.', step:8 },
+  { id:'E', icon:'📋', label:'Case E', text:'Personnage relit un document — validation interne.', step:6 },
+  { id:'F', icon:'📞', label:'Case F', text:'Personnage au téléphone — validation client externe.', step:7 },
+];
+// Correct order: C1 → A → B1 → B2 → C2 → E → F → D
+const ARC_CORRECT = ['C1','A','B1','B2','C2','E','F','D'];
+
+// ═══════════════════════════════════════════════════════════════════
+// ARCHETYPE CARDS DATA
+// ═══════════════════════════════════════════════════════════════════
+const ARCHETYPES = [
+  { id:'kenzo', emoji:'🧓', name:'Kenzo', archetype:'Le Maître — Jiraiya', logique:'Transmettre quelque chose qui dure, ne pas brûler les étapes.' },
+  { id:'sara', emoji:'💼', name:'Sara', archetype:'Le Capitaine — Levi', logique:'Tenir l\'équipe debout coûte que coûte. Le résultat prime.' },
+  { id:'yuki', emoji:'⚡', name:'Yuki', archetype:'Le Héros — Luffy', logique:'Avancer ensemble. Personne ne reste derrière.' },
+  { id:'leon', emoji:'🔍', name:'Léon', archetype:'Le Prodige — L', logique:'Résoudre ce que les autres ne voient pas. Optimiser.' },
+  { id:'marie', emoji:'🌸', name:'Marie', archetype:'Le Gardien — Tohru', logique:'Prendre soin du lien humain. Protéger la relation client.' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════
+function startGame() {
+  showScreen('screen-chars');
+  buildCharsGrid();
+}
+
+function buildCharsGrid() {
+  const grid = document.getElementById('chars-grid');
+  grid.innerHTML = '';
+  CHARACTERS.forEach(ch => {
+    const card = document.createElement('div');
+    card.className = 'char-card';
+    card.id = 'char-' + ch.id;
+    card.style.borderTopColor = ch.color;
+    card.innerHTML = `
+      <div class="char-header" style="border-bottom-color:${ch.color}40;">
+        <span class="char-emoji">${ch.emoji}</span>
+        <div><div class="char-name">${ch.name}</div><div class="char-gen">${ch.gen}</div></div>
+      </div>
+      <div class="char-body">
+        <div class="char-archetype">${ch.archetype}</div>
+        <div class="char-row"><span class="char-label g">Force :</span><span class="char-value">${ch.force}</span></div>
+        <div class="char-row"><span class="char-label r">Angle mort :</span><span class="char-value">${ch.angle}</span></div>
+        <div class="char-quote">${ch.quote}</div>
+      </div>`;
+    card.onclick = () => toggleChar(ch.id);
+    grid.appendChild(card);
+  });
+}
+
+function toggleChar(id) {
+  const card = document.getElementById('char-' + id);
+  card.classList.toggle('selected');
+  updateCharsStatus();
+}
+
+function shuffleChars() {
+  // Deselect all
+  CHARACTERS.forEach(ch => document.getElementById('char-'+ch.id).classList.remove('selected'));
+  // Randomly select 4-6
+  const shuffled = [...CHARACTERS].sort(() => Math.random()-0.5);
+  const count = 4 + Math.floor(Math.random() * 3);
+  shuffled.slice(0, Math.min(count, shuffled.length)).forEach(ch => {
+    document.getElementById('char-'+ch.id).classList.add('selected');
+  });
+  updateCharsStatus();
+}
+
+function updateCharsStatus() {
+  const selected = document.querySelectorAll('.char-card.selected').length;
+  const btn = document.getElementById('chars-next-btn');
+  const status = document.getElementById('chars-status');
+  if (selected >= 4 && selected <= 6) {
+    btn.disabled = false;
+    status.textContent = `${selected} joueurs sélectionnés — prêt à démarrer !`;
+    status.style.color = 'var(--green)';
+  } else if (selected < 4) {
+    btn.disabled = true;
+    status.textContent = `${selected} joueur(s) sélectionné(s) — minimum 4 requis`;
+    status.style.color = '';
+  } else {
+    btn.disabled = true;
+    status.textContent = `${selected} joueurs — maximum 6 joueurs`;
+    status.style.color = 'var(--red)';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════════════════
+function startTimer() {
+  state.startTime = Date.now();
+  state.timerInterval = setInterval(tickTimer, 1000);
+}
+
+function tickTimer() {
+  state.elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+  const remaining = TOTAL_SECONDS - state.elapsed;
+  if (remaining <= 0) {
+    clearInterval(state.timerInterval);
+    document.getElementById('timer-display').textContent = '00:00';
+    return;
+  }
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  const td = document.getElementById('timer-display');
+  td.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  td.classList.toggle('urgent', remaining < 300);
+}
+
+function getElapsedFormatted() {
+  const m = Math.floor(state.elapsed / 60);
+  const s = state.elapsed % 60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function goToEnigma(n) {
+  if (n === 1) {
+    startTimer();
+    document.getElementById('hud').classList.remove('hidden');
+    buildProgressDots();
+  }
+  state.currentEnigma = n;
+  updateProgressDots();
+  updateHintBtn();
+  showScreen('screen-e' + n);
+}
+
+function buildProgressDots() {
+  const dots = document.getElementById('progress-dots');
+  dots.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'pdot';
+    d.id = 'pdot-' + i;
+    dots.appendChild(d);
+  }
+}
+
+function updateProgressDots() {
+  for (let i = 1; i <= 5; i++) {
+    const d = document.getElementById('pdot-' + i);
+    if (!d) return;
+    d.classList.remove('done','active');
+    if (i < state.currentEnigma) d.classList.add('done');
+    else if (i === state.currentEnigma) d.classList.add('active');
+  }
+  const e = state.currentEnigma;
+  const labels = ['','LES TROIS PLANCHES','LE TRADUCTEUR','LE STORY ARC','NARUTO VS ERWIN','LES CINQ ARCHÉTYPES'];
+  document.getElementById('progress-label').textContent = `ÉNIGME ${e}/5 · ${labels[e]}`;
+}
+
+function updateHintBtn() {
+  const btn = document.getElementById('hint-btn');
+  const used = state.hintsPerEnigma[state.currentEnigma];
+  btn.disabled = !!used;
+  btn.classList.toggle('used', !!used);
+  btn.textContent = used ? 'Indice utilisé' : 'Indice';
+}
+
+function showHint() {
+  const n = state.currentEnigma;
+  if (state.hintsPerEnigma[n]) return;
+  state.hintsPerEnigma[n] = true;
+  state.hintsUsed++;
+  updateHintBtn();
+  document.getElementById('hint-text').textContent = HINTS[n];
+  document.getElementById('hint-box').classList.add('visible');
+}
+
+function closeHint() {
+  document.getElementById('hint-box').classList.remove('visible');
+}
+
+function showFeedback(ok, cb) {
+  const ov = document.getElementById('feedback-overlay');
+  const box = document.getElementById('feedback-box');
+  box.className = ok ? 'ok' : 'ko';
+  box.textContent = ok ? 'CORRECT !' : 'ERREUR !';
+  ov.classList.add('active');
+  setTimeout(() => {
+    ov.classList.remove('active');
+    if (cb) cb();
+  }, 1200);
+}
+
+function goToDebrief() {
+  clearInterval(state.timerInterval);
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('final-time').textContent = getElapsedFormatted();
+  showScreen('screen-debrief');
+}
+
+function goToVictory() {
+  document.getElementById('v-time').textContent = getElapsedFormatted();
+  document.getElementById('v-hints').textContent = state.hintsUsed;
+  showScreen('screen-victory');
+}
+
+function restartGame() {
+  clearInterval(state.timerInterval);
+  Object.assign(state, { timerInterval:null, startTime:null, elapsed:0, currentEnigma:0, hintsUsed:0, hintsPerEnigma:{}, plancheSelected:null, e1Step:1, arcOrder:[], refN:null, refE:null, archSelected:[], voteDecision:null });
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('timer-display').textContent = '60:00';
+  document.getElementById('timer-display').classList.remove('urgent');
+  showScreen('screen-intro');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ENIGME 1
+// ═══════════════════════════════════════════════════════════════════
+function selectPlanche(name) {
+  if (state.e1Step !== 1) return;
+  state.plancheSelected = name;
+  ['A','B','C'].forEach(p => {
+    document.getElementById('planche-'+p).classList.remove('selected','wrong');
+  });
+  document.getElementById('planche-'+name).classList.add('selected');
+  
+  if (name === 'B') {
+    showFeedback(true, () => {
+      state.e1Step = 2;
+      ['A','B','C'].forEach(p => document.getElementById('planche-'+p).style.pointerEvents = 'none');
+      document.getElementById('planche-B').classList.remove('selected');
+      document.getElementById('planche-B').style.borderColor = 'var(--green)';
+      document.getElementById('e1-form').style.display = 'block';
+    });
+  } else {
+    document.getElementById('planche-'+name).classList.add('wrong');
+    document.getElementById('planche-'+name).classList.remove('selected');
+    showFeedback(false);
+    const errEl = document.getElementById('e1-error');
+    errEl.style.display = 'block';
+    const msgs = { A:'La planche A : contradition caféine/café (case 2 → case 4).', C:'La planche C : l\'horloge et le contexte ne correspondent pas.' };
+    errEl.textContent = msgs[name] + ' Cherchez la planche sans contradiction interne.';
+    setTimeout(() => errEl.style.display = 'none', 4000);
+  }
+}
+
+function checkE1Fields() {
+  const p = document.getElementById('e1-perimetre').value.trim();
+  const d = document.getElementById('e1-deadline').value.trim();
+  const b = document.getElementById('e1-budget').value.trim();
+  const c = document.getElementById('e1-contact').value.trim();
+  document.getElementById('e1-validate-btn').disabled = !(p && d && b && c);
+}
+
+function validateE1() {
+  const checks = [
+    { el: document.getElementById('e1-perimetre'), ok: v => v.toLowerCase().includes('cloud') || v.toLowerCase().includes('migration') || v.toLowerCase().includes('infra') },
+    { el: document.getElementById('e1-deadline'), ok: v => v.includes('72') || v.toLowerCase().includes('j+72') },
+    { el: document.getElementById('e1-budget'), ok: v => v.includes('480') && (v.includes('€') || v.toLowerCase().includes('eur')) },
+    { el: document.getElementById('e1-contact'), ok: v => v.toLowerCase().includes('dsi') || v.toLowerCase().includes('groupe') || v.toLowerCase().includes('directeur') },
+  ];
+  let allOk = true;
+  checks.forEach(({el, ok}) => {
+    const valid = ok(el.value);
+    el.className = valid ? 'correct' : 'incorrect';
+    if (!valid) allOk = false;
+  });
+  if (allOk) {
+    showFeedback(true, () => goToEnigma(2));
+  } else {
+    showFeedback(false);
+    const err = document.getElementById('e1-error');
+    err.style.display = 'block';
+    err.textContent = 'Vérifiez les champs en rouge — les infos sont dans la Planche B.';
+    setTimeout(() => err.style.display = 'none', 4000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ENIGME 2
+// ═══════════════════════════════════════════════════════════════════
+function checkE2() {
+  const rows = document.querySelectorAll('#e2-tasks .task-row');
+  let allFilled = true;
+  rows.forEach(row => {
+    const sel = row.querySelector('.task-select');
+    if (!sel.value) allFilled = false;
+  });
+  document.getElementById('e2-btn').disabled = !allFilled;
+}
+
+function validateE2() {
+  const rows = document.querySelectorAll('#e2-tasks .task-row');
+  let correct = 0;
+  rows.forEach(row => {
+    const sel = row.querySelector('.task-select');
+    if (sel.value === row.dataset.correct) {
+      row.classList.add('correct-task');
+      correct++;
+    } else {
+      row.classList.remove('correct-task');
+      row.style.borderColor = 'var(--red)';
+    }
+  });
+  if (correct === rows.length) {
+    showFeedback(true, () => goToEnigma(3));
+  } else {
+    showFeedback(false);
+    const err = document.getElementById('e2-error');
+    err.style.display = 'block';
+    err.textContent = `${correct}/${rows.length} corrects — les cases en rouge sont incorrectes. Re-lisez la clé de Kenzo.`;
+    setTimeout(() => { err.style.display = 'none'; rows.forEach(r=>r.style.borderColor=''); }, 5000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ENIGME 3
+// ═══════════════════════════════════════════════════════════════════
+function buildArcGrid() {
+  const shuffled = [...ARC_PANELS].sort(() => Math.random()-0.5);
+  const grid = document.getElementById('arc-grid');
+  grid.innerHTML = '';
+  shuffled.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'arc-panel';
+    card.id = 'arc-' + p.id;
+    card.setAttribute('data-id', p.id);
+    card.innerHTML = `<div class="arc-panel-id">${p.label}</div><div class="arc-panel-icon">${p.icon}</div><div class="arc-panel-text">${p.text}</div>`;
+    card.onclick = () => clickArcPanel(p.id);
+    grid.appendChild(card);
+  });
+}
+
+function clickArcPanel(id) {
+  const idx = state.arcOrder.indexOf(id);
+  if (idx !== -1) {
+    state.arcOrder.splice(idx, 1);
+    document.getElementById('arc-'+id).classList.remove('ordered');
+    const badge = document.querySelector('#arc-'+id+' .arc-order-badge');
+    if (badge) badge.remove();
+  } else if (state.arcOrder.length < 8) {
+    state.arcOrder.push(id);
+    document.getElementById('arc-'+id).classList.add('ordered');
+    const badge = document.createElement('div');
+    badge.className = 'arc-order-badge';
+    badge.textContent = state.arcOrder.length;
+    document.getElementById('arc-'+id).appendChild(badge);
+  }
+  updateArcSequence();
+}
+
+function updateArcSequence() {
+  const seq = document.getElementById('arc-sequence');
+  if (state.arcOrder.length === 0) {
+    seq.innerHTML = '<span style="opacity:0.3;font-size:0.8rem;">Cliquez les cases ci-dessus pour former la séquence...</span>';
+    document.getElementById('e3-btn').disabled = true;
+    return;
+  }
+  const panels = {};
+  ARC_PANELS.forEach(p => panels[p.id] = p);
+  seq.innerHTML = state.arcOrder.map((id,i) => `<span class="seq-badge">${i+1}·${panels[id]?.icon||id}</span>`).join('');
+  document.getElementById('e3-btn').disabled = state.arcOrder.length < 8;
+}
+
+function resetArc() {
+  state.arcOrder = [];
+  document.querySelectorAll('.arc-panel').forEach(p => {
+    p.classList.remove('ordered','correct-pos');
+    const b = p.querySelector('.arc-order-badge');
+    if (b) b.remove();
+  });
+  updateArcSequence();
+}
+
+function validateE3() {
+  const correct = state.arcOrder.join(',') === ARC_CORRECT.join(',');
+  if (correct) {
+    state.arcOrder.forEach(id => document.getElementById('arc-'+id).classList.add('correct-pos'));
+    showFeedback(true, () => goToEnigma(4));
+  } else {
+    // Show partial score
+    let pts = 0;
+    state.arcOrder.forEach((id,i) => { if(id === ARC_CORRECT[i]) pts++; });
+    showFeedback(false);
+    const err = document.getElementById('e3-error');
+    err.style.display = 'block';
+    err.textContent = `${pts}/8 positions correctes. Indice : commencez par trouver la "clé" (🗝️) — elle débloque tout le reste.`;
+    setTimeout(() => err.style.display = 'none', 5000);
+    resetArc();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ENIGME 4
+// ═══════════════════════════════════════════════════════════════════
+// Correct answers: Naruto → B (index 1), Erwin → B (index 1)
+function selectRef(who, idx, el) {
+  const isNaruto = who === 'n';
+  const container = el.closest('.position-card');
+  container.querySelectorAll('.ref-option').forEach(o => o.classList.remove('selected','correct','wrong'));
+  el.classList.add('selected');
+  
+  const correct = idx === 1; // B is correct for both
+  
+  if (correct) {
+    el.classList.add('correct');
+    if (isNaruto) {
+      state.refN = idx;
+      // Unlock Erwin
+      const erwin = document.getElementById('erwin-card');
+      erwin.style.opacity = '1';
+      erwin.style.pointerEvents = 'auto';
+    } else {
+      state.refE = idx;
+    }
+  } else {
+    el.classList.add('wrong');
+    if (isNaruto) { state.refN = null; }
+    else { state.refE = null; }
+    showFeedback(false);
+  }
+  
+  if (state.refN !== null && state.refE !== null) {
+    document.getElementById('e4-btn').disabled = false;
+  }
+}
+
+function validateE4() {
+  showFeedback(true, () => {
+    buildArchGrid();
+    goToEnigma(5);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ENIGME 5
+// ═══════════════════════════════════════════════════════════════════
+function buildArchGrid() {
+  const grid = document.getElementById('arch-grid');
+  grid.innerHTML = '';
+  ARCHETYPES.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'arch-card';
+    card.id = 'arch-' + a.id;
+    card.innerHTML = `<div class="arch-emoji">${a.emoji}</div><div class="arch-name">${a.name}</div><div class="arch-archetype">${a.archetype}</div><div class="arch-logique">${a.logique}</div>`;
+    card.onclick = () => toggleArch(a.id);
+    grid.appendChild(card);
+  });
+}
+
+function toggleArch(id) {
+  const idx = state.archSelected.indexOf(id);
+  const card = document.getElementById('arch-'+id);
+  if (idx !== -1) {
+    state.archSelected.splice(idx,1);
+    card.classList.remove('selected');
+  } else {
+    state.archSelected.push(id);
+    card.classList.add('selected');
+  }
+  updateArchUI();
+}
+
+function updateArchUI() {
+  const n = state.archSelected.length;
+  const counter = document.getElementById('arch-counter');
+  const argBox = document.getElementById('arch-argument');
+  const argText = document.getElementById('arch-arg-text');
+  const voteA = document.getElementById('vote-accept');
+  const voteR = document.getElementById('vote-refuse');
+  
+  if (n < 3) {
+    counter.textContent = `${n}/3 archétypes sélectionnés — sélectionnez encore ${3-n}`;
+    counter.style.color = 'var(--yellow)';
+    argBox.style.display = 'none';
+    voteA.disabled = true; voteR.disabled = true;
+  } else {
+    counter.textContent = `${n} archétypes sélectionnés ✓`;
+    counter.style.color = 'var(--green)';
+    // Build argument
+    const selected = ARCHETYPES.filter(a => state.archSelected.includes(a.id));
+    const first3 = selected.slice(0,3);
+    const arg = `On ${state.voteDecision === 'accept' ? 'accepte' : 'décide'} parce que ça permet au ${first3[0].archetype.split('—')[0].trim()} de ${first3[0].logique.toLowerCase().replace(/\.$/, '')}, au ${first3[1].archetype.split('—')[0].trim()} de ${first3[1].logique.toLowerCase().replace(/\.$/, '')}, et au ${first3[2].archetype.split('—')[0].trim()} de ${first3[2].logique.toLowerCase().replace(/\.$/, '')}.`;
+    argText.textContent = arg;
+    argBox.style.display = 'block';
+    voteA.disabled = false; voteR.disabled = false;
+  }
+}
+
+function vote(decision) {
+  if (state.archSelected.length < 3) return;
+  state.voteDecision = decision;
+  const res = document.getElementById('vote-result');
+  res.style.display = 'block';
+  if (decision === 'accept') {
+    res.textContent = '✓ L\'ÉQUIPE ACCEPTE L\'AVENANT';
+    res.style.color = 'var(--green)';
+  } else {
+    res.textContent = '✗ L\'ÉQUIPE REFUSE L\'AVENANT';
+    res.style.color = 'var(--red)';
+  }
+  document.getElementById('vote-accept').disabled = true;
+  document.getElementById('vote-refuse').disabled = true;
+  document.getElementById('e5-footer').style.display = 'flex';
+  updateArchUI();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  buildArcGrid();
+});
+</script>
+</body>
+</html>
