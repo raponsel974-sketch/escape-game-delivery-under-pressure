@@ -17,6 +17,7 @@
   --pink:   #E8779A;
   --blue:   #4A90D9;
   --navy:   #1A2B5F;
+  --pink:   #E8779A;
   --green:  #1DB584;
   --yellow: #E8C84A;
   --border: 2.5px solid rgba(244,242,238,0.18);
@@ -803,6 +804,56 @@ body::before {
 .conf-piece { position:fixed; pointer-events:none; animation:confFall linear infinite; z-index:5; }
 
 /* ══ FIN ACCESSIBILITÉ ══ */
+
+/* ══ SCREEN BRIEFING ══════════════════════════════════════════════ */
+#screen-briefing {
+  background: radial-gradient(ellipse at 20% 30%, rgba(29,181,132,0.07) 0%, transparent 55%), var(--bg);
+}
+.check-btn {
+  font-family: 'Bangers', cursive;
+  font-size: 0.85rem; letter-spacing: 1.5px;
+  padding: 8px 16px;
+  border: 2px solid rgba(244,242,238,0.2);
+  background: transparent; color: rgba(244,242,238,0.5);
+  cursor: pointer; text-transform: uppercase;
+  transition: all 0.2s; border-radius: 3px;
+  position: relative;
+}
+.check-btn:hover { border-color: var(--teal); color: var(--teal); }
+.check-btn.checked {
+  border-color: var(--teal); color: var(--bg);
+  background: var(--teal); cursor: default;
+}
+.briefing-char-card {
+  background: var(--panel); border: 2px solid var(--border);
+  border-radius: 4px; overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.briefing-char-card .bcc-top { height: 4px; }
+.briefing-char-card .bcc-header {
+  padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1.5px solid var(--border);
+}
+.briefing-char-card .bcc-emoji { font-size: 2.2rem; }
+.briefing-char-card .bcc-name { font-family: 'Bangers', cursive; font-size: 1.3rem; letter-spacing: 2px; }
+.briefing-char-card .bcc-gen { font-size: 0.68rem; opacity: 0.45; letter-spacing: 1px; text-transform: uppercase; }
+.briefing-char-card .bcc-body { padding: 14px 16px; }
+.briefing-char-card .bcc-archetype { font-size: 0.72rem; font-weight: 700; margin-bottom: 10px; letter-spacing: 0.5px; }
+.briefing-char-card .bcc-row { display: flex; gap: 6px; margin-bottom: 7px; align-items: flex-start; }
+.briefing-char-card .bcc-label { font-family: 'Bangers', cursive; font-size: 0.7rem; letter-spacing: 1px; min-width: 75px; padding-top: 1px; }
+.briefing-char-card .bcc-val { font-size: 0.78rem; opacity: 0.78; line-height: 1.4; }
+.briefing-char-card .bcc-quote {
+  font-size: 0.73rem; font-style: italic; opacity: 0.5;
+  margin-top: 10px; padding-top: 8px;
+  border-top: 1px solid var(--border); line-height: 1.4;
+}
+.briefing-char-card .bcc-mission {
+  margin: 10px 0 0; padding: 10px 12px;
+  background: rgba(29,181,132,0.06); border: 1.5px solid rgba(29,181,132,0.2);
+  border-radius: 3px; font-size: 0.76rem; line-height: 1.5;
+}
+.briefing-char-card .bcc-mission strong { color: var(--teal); display: block; font-family: 'Bangers', cursive; letter-spacing: 1px; font-size: 0.7rem; margin-bottom: 3px; }
+/* ══ FIN BRIEFING ══════════════════════════════════════════════════ */
 </style>
 </head>
 <body>
@@ -964,11 +1015,124 @@ body::before {
   
   <div style="text-align:center;margin-bottom:16px;">
     <button class="btn" onclick="shuffleChars()" style="margin-right:12px;">🎲 Tirage aléatoire</button>
-    <button class="btn y" id="chars-next-btn" onclick="goToEnigma(1)" disabled>
-      COMMENCER LE TIMER →
+    <button class="btn y" id="chars-next-btn" onclick="goToBriefing()" disabled>
+      DISTRIBUER LES RÔLES →
     </button>
   </div>
   <p id="chars-status" style="text-align:center;font-size:0.8rem;opacity:0.4;margin-bottom:40px;">Cliquez sur un personnage pour le sélectionner, ou utilisez le tirage aléatoire</p>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN BRIEFING — Lecture des rôles                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="screen-briefing" class="screen">
+  <div style="padding:60px 24px 60px;max-width:960px;margin:0 auto;width:100%;">
+
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:36px;">
+      <div style="font-family:'Bangers',cursive;font-size:0.85rem;letter-spacing:4px;color:var(--teal);margin-bottom:10px;">ÉTAPE 2/6 — BRIEFING</div>
+      <h2 style="font-family:'Bangers',cursive;font-size:clamp(2rem,5vw,3rem);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;">Chaque joueur lit son rôle</h2>
+      <div style="width:60px;height:3px;background:linear-gradient(to right,var(--teal),var(--gold));margin:12px auto 16px;border-radius:2px;"></div>
+      <p style="font-size:0.88rem;opacity:0.5;max-width:500px;margin:0 auto;">Prenez 2 minutes. Lisez votre fiche en silence. N'échangez pas encore vos informations — certaines sont confidentielles.</p>
+    </div>
+
+    <!-- Règles rapides -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:32px;">
+      <div style="background:var(--panel);border:1.5px solid var(--border);padding:12px 14px;border-left:4px solid var(--teal);border-radius:3px;">
+        <div style="font-family:'Bangers',cursive;font-size:0.8rem;letter-spacing:2px;color:var(--teal);margin-bottom:4px;">⏱ TIMER</div>
+        <div style="font-size:0.78rem;opacity:0.7;line-height:1.4;">60 minutes. Il démarre quand tout le monde est prêt.</div>
+      </div>
+      <div style="background:var(--panel);border:1.5px solid var(--border);padding:12px 14px;border-left:4px solid var(--gold);border-radius:3px;">
+        <div style="font-family:'Bangers',cursive;font-size:0.8rem;letter-spacing:2px;color:var(--gold);margin-bottom:4px;">💡 INDICES</div>
+        <div style="font-size:0.78rem;opacity:0.7;line-height:1.4;">1 indice disponible par énigme. À utiliser en équipe.</div>
+      </div>
+      <div style="background:var(--panel);border:1.5px solid var(--border);padding:12px 14px;border-left:4px solid var(--pink);border-radius:3px;">
+        <div style="font-family:'Bangers',cursive;font-size:0.8rem;letter-spacing:2px;color:var(--pink);margin-bottom:4px;">🎌 RÔLES</div>
+        <div style="font-size:0.78rem;opacity:0.7;line-height:1.4;">Votre archétype guide votre façon de contribuer.</div>
+      </div>
+      <div style="background:var(--panel);border:1.5px solid var(--border);padding:12px 14px;border-left:4px solid var(--red);border-radius:3px;">
+        <div style="font-family:'Bangers',cursive;font-size:0.8rem;letter-spacing:2px;color:var(--red);margin-bottom:4px;">🚫 RÈGLE</div>
+        <div style="font-size:0.78rem;opacity:0.7;line-height:1.4;">Pas de smartphone pour chercher. L'IA est autorisée en énigme 5 seulement.</div>
+      </div>
+    </div>
+
+    <!-- Cartes des joueurs sélectionnés -->
+    <div id="briefing-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-bottom:36px;"></div>
+
+    <!-- Checklist joueurs -->
+    <div style="background:var(--panel);border:1.5px solid var(--border);padding:20px 24px;border-radius:4px;margin-bottom:28px;">
+      <div style="font-family:'Bangers',cursive;font-size:0.9rem;letter-spacing:2px;color:var(--gold);margin-bottom:14px;">✓ CONFIRMATION — Chaque joueur confirme avoir lu son rôle</div>
+      <div id="briefing-checklist" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+    </div>
+
+    <!-- Bouton démarrer -->
+    <div style="text-align:center;">
+      <button class="btn teal" id="briefing-start-btn" onclick="launchMission()" disabled
+        style="font-size:1.4rem;padding:16px 52px;">
+        🚀 LANCER LA MISSION
+      </button>
+      <p id="briefing-ready-status" style="margin-top:12px;font-size:0.82rem;opacity:0.45;font-family:'Bangers',cursive;letter-spacing:2px;">
+        Tous les joueurs doivent confirmer avant de lancer
+      </p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN BRIEFING — Chaque joueur lit son rôle
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="screen-briefing" class="screen">
+  <div style="padding:80px 24px 60px;max-width:960px;margin:0 auto;width:100%;">
+    
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-family:'Bangers',cursive;font-size:0.82rem;letter-spacing:4px;color:var(--teal);margin-bottom:8px;text-transform:uppercase;">
+        🎌 Briefing — Rôles distribués
+      </div>
+      <h2 style="font-family:'Bangers',cursive;font-size:clamp(1.8rem,4vw,2.4rem);letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;">
+        CHAQUE JOUEUR LIT SA FICHE
+      </h2>
+      <p style="font-size:0.88rem;opacity:0.5;max-width:480px;margin:0 auto;">
+        Lisez silencieusement votre personnage. Ne montrez pas votre fiche aux autres.<br>
+        Le timer démarre maintenant — vous avez 60 secondes de lecture.
+      </p>
+    </div>
+
+    <!-- Barre de progression timer lecture -->
+    <div style="background:rgba(244,242,238,0.08);border-radius:4px;height:6px;max-width:400px;margin:0 auto 32px;overflow:hidden;">
+      <div id="reading-bar" style="height:100%;width:100%;background:linear-gradient(to right,var(--teal),var(--gold));border-radius:4px;transition:width 1s linear;"></div>
+    </div>
+
+    <!-- Grille des personnages sélectionnés -->
+    <div id="briefing-chars-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-bottom:36px;"></div>
+
+    <!-- Règles du jeu -->
+    <div style="border:1.5px solid var(--border);background:rgba(22,32,47,0.8);padding:18px 22px;border-radius:4px;margin-bottom:32px;border-left:4px solid var(--teal);">
+      <div style="font-family:'Bangers',cursive;font-size:0.82rem;letter-spacing:2px;color:var(--teal);margin-bottom:10px;">📋 RÈGLES DU JEU</div>
+      <ul style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
+        <li style="font-size:0.82rem;opacity:0.75;display:flex;align-items:flex-start;gap:7px;"><span style="color:var(--teal);font-weight:900;flex-shrink:0;">▶</span>5 énigmes enchaînées — 60 min</li>
+        <li style="font-size:0.82rem;opacity:0.75;display:flex;align-items:flex-start;gap:7px;"><span style="color:var(--teal);font-weight:900;flex-shrink:0;">▶</span>1 indice disponible par énigme</li>
+        <li style="font-size:0.82rem;opacity:0.75;display:flex;align-items:flex-start;gap:7px;"><span style="color:var(--teal);font-weight:900;flex-shrink:0;">▶</span>Une seule réponse par équipe — concertez-vous</li>
+        <li style="font-size:0.82rem;opacity:0.75;display:flex;align-items:flex-start;gap:7px;"><span style="color:var(--gold);font-weight:900;flex-shrink:0;">▶</span>Énigme 2 : <strong style="color:var(--gold);">KENZO</strong> a une info exclusive — il la transmet à voix haute</li>
+        <li style="font-size:0.82rem;opacity:0.75;display:flex;align-items:flex-start;gap:7px;"><span style="color:var(--gold);font-weight:900;flex-shrink:0;">▶</span>Énigme 4 : reformulez la position adverse <em>sans caricature</em></li>
+        <li style="font-size:0.82rem;opacity:0.75;display:flex;align-items:flex-start;gap:7px;"><span style="color:var(--gold);font-weight:900;flex-shrink:0;">▶</span>Énigme 5 : vote collectif — majorité qualifiée requise</li>
+      </ul>
+    </div>
+
+    <!-- Bouton lancement -->
+    <div style="text-align:center;">
+      <button class="btn teal" id="briefing-ready-btn" onclick="launchEnigma1()" style="font-size:1.4rem;padding:15px 48px;">
+        ✓ TOUT LE MONDE EST PRÊT — LANCER L'ÉNIGME 1 →
+      </button>
+      <div id="briefing-timer-txt" style="margin-top:12px;font-family:'Bangers',cursive;font-size:0.88rem;letter-spacing:2px;color:var(--gold);opacity:0.7;">
+        Lecture en cours…
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════ -->
@@ -1383,6 +1547,8 @@ const state = {
   // E5
   archSelected: [],
   voteDecision: null,
+  selectedChars: [],
+  briefingChecked: {},
 };
 
 const TOTAL_SECONDS = 60 * 60;
@@ -1461,9 +1627,205 @@ const ARCHETYPES = [
   { id:'marie', emoji:'🌸', name:'Marie', archetype:'Le Gardien — Tohru', logique:'Prendre soin du lien humain. Protéger la relation client.' },
 ];
 
+
+// ═══════════════════════════════════════════════════════════════════
+// BRIEFING
+// ═══════════════════════════════════════════════════════════════════
+
+// Missions secrètes par personnage
+const MISSIONS = {
+  kenzo:  'Votre mémoire institutionnelle est la clé. Vous seul savez pourquoi ce type de projet a déjà échoué. Transmettez ce que vous savez — au bon moment.',
+  sara:   'Vous coordonnez. Si personne ne prend de décision, c'est à vous de trancher. Mais attention : décider seul.e peut braquer l'équipe.',
+  yuki:   'Vous maîtrisez les outils. Soyez le pont entre la complexité technique et l'équipe. Et laissez les autres parler avant vous.',
+  leon:   'Votre rapidité est un atout. Mais une bonne idée mal expliquée ne passe pas. Prenez le temps de convaincre, pas juste d'avoir raison.',
+  marie:  'Le client est votre boussole. Si l'équipe fonce dans le mur, c'est vous qui entendez la sonnette d'alarme en premier. Osez l'exprimer.',
+  aiko:   'Vous êtes le regard extérieur. Observez les dynamiques. Si l'équipe bloque, c'est votre moment d'intervenir — avec une synthèse, pas une opinion.',
+};
+
+function goToBriefing() {
+  // Récupère les persos sélectionnés
+  const selected = CHARACTERS.filter(ch =>
+    document.getElementById('char-' + ch.id).classList.contains('selected')
+  );
+  state.selectedChars = selected;
+  buildBriefingScreen(selected);
+  showScreen('screen-briefing');
+}
+
+function buildBriefingScreen(chars) {
+  // Cartes détaillées
+  const cardsEl = document.getElementById('briefing-cards');
+  cardsEl.innerHTML = '';
+  chars.forEach(ch => {
+    const mission = MISSIONS[ch.id] || 'Jouez votre rôle avec authenticité.';
+    const card = document.createElement('div');
+    card.className = 'briefing-char-card';
+    card.innerHTML = `
+      <div class="bcc-top" style="background:${ch.color};"></div>
+      <div class="bcc-header">
+        <span class="bcc-emoji">${ch.emoji}</span>
+        <div>
+          <div class="bcc-name">${ch.name}</div>
+          <div class="bcc-gen">${ch.gen} · ${ch.role}</div>
+        </div>
+      </div>
+      <div class="bcc-body">
+        <div class="bcc-archetype" style="color:${ch.color};">${ch.archetype}</div>
+        <div class="bcc-row">
+          <span class="bcc-label" style="color:var(--teal);">Force :</span>
+          <span class="bcc-val">${ch.force}</span>
+        </div>
+        <div class="bcc-row">
+          <span class="bcc-label" style="color:var(--pink);">Angle mort :</span>
+          <span class="bcc-val">${ch.angle}</span>
+        </div>
+        <div class="bcc-quote">${ch.quote}</div>
+        <div class="bcc-mission">
+          <strong>🎯 MISSION SECRÈTE</strong>
+          ${mission}
+        </div>
+      </div>
+    `;
+    cardsEl.appendChild(card);
+  });
+
+  // Checklist
+  const listEl = document.getElementById('briefing-checklist');
+  listEl.innerHTML = '';
+  state.briefingChecked = {};
+  chars.forEach(ch => {
+    state.briefingChecked[ch.id] = false;
+    const btn = document.createElement('button');
+    btn.className = 'check-btn';
+    btn.id = 'check-' + ch.id;
+    btn.textContent = ch.emoji + ' ' + ch.name + ' — Lu ✓';
+    btn.onclick = () => confirmRead(ch.id);
+    listEl.appendChild(btn);
+  });
+
+  updateBriefingStatus();
+}
+
+function confirmRead(id) {
+  state.briefingChecked[id] = true;
+  const btn = document.getElementById('check-' + id);
+  btn.classList.add('checked');
+  btn.textContent = '✓ ' + btn.textContent.replace(' — Lu ✓','') + ' · Prêt';
+  updateBriefingStatus();
+}
+
+function updateBriefingStatus() {
+  const total = Object.keys(state.briefingChecked).length;
+  const done = Object.values(state.briefingChecked).filter(Boolean).length;
+  const btn = document.getElementById('briefing-start-btn');
+  const status = document.getElementById('briefing-ready-status');
+  if (done === total && total > 0) {
+    btn.disabled = false;
+    status.textContent = '✓ Toute l'équipe est prête — feu vert !';
+    status.style.color = 'var(--teal)';
+  } else {
+    btn.disabled = true;
+    status.textContent = `${done}/${total} joueurs ont confirmé`;
+    status.style.color = '';
+  }
+}
+
+function launchMission() {
+  startTimer();
+  document.getElementById('hud').classList.remove('hidden');
+  buildProgressDots();
+  state.currentEnigma = 1;
+  updateProgressDots();
+  updateHintBtn();
+  showScreen('screen-e1');
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // INIT FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+// SCREEN BRIEFING
+// ═══════════════════════════════════════════════════════════════════
+let readingTimer = null;
+let readingSeconds = 60;
+
+function goToBriefing() {
+  // Démarrer le timer global
+  startTimer();
+  document.getElementById('hud').classList.remove('hidden');
+  buildProgressDots();
+  // Construire la grille des personnages sélectionnés
+  buildBriefingGrid();
+  // Lancer la barre de lecture 60s
+  startReadingCountdown();
+  showScreen('screen-briefing');
+}
+
+function buildBriefingGrid() {
+  const grid = document.getElementById('briefing-chars-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const selected = [...document.querySelectorAll('.char-card.selected')].map(el => {
+    const id = el.id.replace('char-', '');
+    return CHARACTERS.find(c => c.id === id);
+  }).filter(Boolean);
+
+  selected.forEach(ch => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--panel);border:2px solid rgba(244,242,238,0.18);border-radius:4px;overflow:hidden;border-top:4px solid var(--teal);';
+    card.innerHTML = `
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:2.2rem;">${ch.emoji}</span>
+        <div>
+          <div style="font-family:'Bangers',cursive;font-size:1.3rem;letter-spacing:2px;">${ch.name}</div>
+          <div style="font-size:0.68rem;opacity:0.45;letter-spacing:1px;text-transform:uppercase;">${ch.gen}</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 14px;">
+        <div style="font-size:0.72rem;color:var(--teal);font-weight:700;margin-bottom:6px;letter-spacing:0.5px;">${ch.archetype}</div>
+        <div style="display:flex;gap:6px;margin-bottom:5px;align-items:flex-start;">
+          <span style="font-family:'Bangers',cursive;font-size:0.7rem;letter-spacing:1px;min-width:68px;color:var(--teal);padding-top:1px;">Force :</span>
+          <span style="font-size:0.77rem;opacity:0.78;line-height:1.4;">${ch.force}</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-start;">
+          <span style="font-family:'Bangers',cursive;font-size:0.7rem;letter-spacing:1px;min-width:68px;color:var(--pink);padding-top:1px;">Angle mort :</span>
+          <span style="font-size:0.77rem;opacity:0.78;line-height:1.4;">${ch.angle}</span>
+        </div>
+        <div style="font-size:0.72rem;font-style:italic;opacity:0.48;border-top:1px solid rgba(244,242,238,0.08);padding-top:8px;line-height:1.4;">${ch.quote}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function startReadingCountdown() {
+  readingSeconds = 60;
+  const bar = document.getElementById('reading-bar');
+  const txt = document.getElementById('briefing-timer-txt');
+  if (readingTimer) clearInterval(readingTimer);
+  readingTimer = setInterval(() => {
+    readingSeconds--;
+    const pct = (readingSeconds / 60) * 100;
+    if (bar) bar.style.width = pct + '%';
+    if (txt) txt.textContent = readingSeconds > 0
+      ? 'Lecture en cours — ' + readingSeconds + 's restantes'
+      : '⚡ Temps de lecture écoulé — lancez quand vous êtes prêts !';
+    if (readingSeconds <= 0) {
+      clearInterval(readingTimer);
+      if (bar) bar.style.background = 'var(--red)';
+    }
+  }, 1000);
+}
+
+function launchEnigma1() {
+  if (readingTimer) clearInterval(readingTimer);
+  state.currentEnigma = 1;
+  updateProgressDots();
+  updateHintBtn();
+  showScreen('screen-e1');
+}
+
 function startGame() {
   showScreen('screen-chars');
   buildCharsGrid();
